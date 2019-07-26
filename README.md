@@ -7,10 +7,5 @@ You must have numpy installed.
 This is only tested on Python3.
 
 ** Example
-#+BEGIN_SRC python
-import numpy as np
-import helmeos
-
-# put some example code here
-#+END_SRC
+See [example.py] for example code
 
