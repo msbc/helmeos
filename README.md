@@ -7,5 +7,5 @@ You must have numpy installed.
 This is only tested on Python3.
 
 ** Example
-See [example.py] for example code
+See [example.py] for example code.
 
