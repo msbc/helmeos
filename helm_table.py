@@ -107,7 +107,7 @@ class HelmTable(object):
     def eos_call(self, den, temp, abar, zbar, outvar=None):
         scalar_input = False
         if ((not hasattr(den, "dtype")) and (not hasattr(temp, "dtype"))
-             and (not hasattr(abar, "dtype")) and (not hasattr(zbar, "dtype"))):
+                and (not hasattr(abar, "dtype")) and (not hasattr(zbar, "dtype"))):
             scalar_input = True
         den = np.atleast_1d(den)
         temp = np.atleast_1d(temp)
@@ -565,7 +565,7 @@ class HelmTable(object):
             decouldz[loc] = s * dpcouldz[loc]
 
             s = -avo * kerg / (abar[loc] * plasg[loc]) * (
-                        1.5 * c2 * x - a2 * (b2 - 1.0) * y)
+                    1.5 * c2 * x - a2 * (b2 - 1.0) * y)
             dscouldd[loc] = s * plasgdd[loc]
             dscouldt[loc] = s * plasgdt[loc]
             dscoulda[loc] = s * plasgda[loc] - scoul[loc] / abar[loc]
@@ -678,7 +678,6 @@ class HelmTable(object):
         dpe = (denerdd * x + temp * dpresdt) / pres - 1.0
         dsp = -dentrdd * x / dpresdt - 1.0
 
-
         # MSBC: DEBUG
         msbc_ft = self._ft[iat, jat]
 
@@ -697,6 +696,44 @@ class HelmTable(object):
                 except TypeError:
                     tmp[i] = out[i]
             out = tmp
+        return out
+
+
+class _DelayedTable(HelmTable):
+    """A child class of HelmTable which only loads the tables once needed"""
+
+    def __init__(self, fn=None, temp_n=None, temp_log_min=None, temp_log_max=None,
+                 dens_n=None, dens_log_min=None, dens_log_max=None, silent=False):
+        self._silent = silent
+        self._kwargs = dict(fn=fn, temp_n=temp_n, temp_log_min=temp_log_min,
+                            temp_log_max=temp_log_max, dens_n=dens_n,
+                            dens_log_min=dens_log_min, dens_log_max=dens_log_max)
+        inherit = vars(HelmTable)
+        self._loader = HelmTable.__init__
+        self.names = [i for i in inherit.keys() if
+                      (i not in vars(self)) and (i[0] != '_')]
+        self.initB = False
+        for attr in self.names:
+            val = inherit[attr]
+            if hasattr(val, '__call__'):
+                setattr(self, attr, self.wrapped_func(attr))
+
+    def load(self):
+        if not self.initB:
+            for i in self.names:
+                delattr(self, i)
+            if not self._silent:
+                print('Initializing Helmholtz EOS table ' + str(self._kwargs['fn']))
+            self._loader(self, **self._kwargs)
+            self.initB = True
+
+    def wrapped_func(self, name):
+        def out(*args, **kw):
+            self.load()
+            func = getattr(self, name)
+            return func(*args, **kw)
+
+        out.__doc__ = getattr(self, name).__doc__
         return out
 
 
