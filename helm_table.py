@@ -48,8 +48,9 @@ class HelmTable(object):
 
         # load data from file
         with open(fn) as f:
+            # read the helmholtz free energy and its derivatives
             col9 = np.genfromtxt(f, delimiter='  ', max_rows=jmax * imax)
-            col9 = col9.reshape((imax, jmax, 9))
+            col9 = np.swapaxes(col9.reshape((jmax, imax, 9)), 0, 1)
             self._f = col9[:, :, 0]
             self._fd = col9[:, :, 1]
             self._ft = col9[:, :, 2]
@@ -60,22 +61,25 @@ class HelmTable(object):
             self._fdtt = col9[:, :, 7]
             self._fddtt = col9[:, :, 8]
 
+            # read the pressure derivative with density table
             col4 = np.genfromtxt(f, delimiter='  ', max_rows=jmax * imax)
-            col4 = col4.reshape((imax, jmax, 4))
+            col4 = np.swapaxes(col4.reshape((jmax, imax, 4)), 0, 1)
             self._dpdf = col4[:, :, 0]
             self._dpdfd = col4[:, :, 1]
             self._dpdft = col4[:, :, 2]
             self._dpdfdt = col4[:, :, 3]
 
+            # read the electron chemical potential table
             col4 = np.genfromtxt(f, delimiter='  ', max_rows=jmax * imax)
-            col4 = col4.reshape((imax, jmax, 4))
+            col4 = np.swapaxes(col4.reshape((jmax, imax, 4)), 0, 1)
             self._ef = col4[:, :, 0]
             self._efd = col4[:, :, 1]
             self._eft = col4[:, :, 2]
             self._efdt = col4[:, :, 3]
 
+            # read the number density table
             col4 = np.genfromtxt(f, delimiter='  ', max_rows=jmax * imax)
-            col4 = col4.reshape((imax, jmax, 4))
+            col4 = np.swapaxes(col4.reshape((jmax, imax, 4)), 0, 1)
             self._xf = col4[:, :, 0]
             self._xfd = col4[:, :, 1]
             self._xft = col4[:, :, 2]
@@ -91,9 +95,9 @@ class HelmTable(object):
         self._dt2i_sav = self._dti_sav ** 2
         self._dt3i_sav = self._dti_sav * self._dt2i_sav
 
-        self._dstp = (dhi - dlo) / (jmax - 1.0)
+        self._dstp = (dhi - dlo) / (imax - 1.0)
         self._dstpi = 1.0 / self._dstp
-        self._d = 10 ** (np.arange(jmax) * self._dstp + dlo)
+        self._d = 10 ** (np.arange(imax) * self._dstp + dlo)
         self._dd_sav = np.diff(self._d)
         self._dd2_sav = self._dd_sav ** 2
         self._ddi_sav = self._dd_sav ** -1
@@ -101,6 +105,21 @@ class HelmTable(object):
         self._dd3i_sav = self._ddi_sav * self._dd2i_sav
 
     def eos_call(self, den, temp, abar, zbar, outvar=None):
+        scalar_input = False
+        if ((not hasattr(den, "dtype")) and (not hasattr(temp, "dtype"))
+             and (not hasattr(abar, "dtype")) and (not hasattr(zbar, "dtype"))):
+            scalar_input = True
+        den = np.atleast_1d(den)
+        temp = np.atleast_1d(temp)
+        abar = np.atleast_1d(abar)
+        zbar = np.atleast_1d(zbar)
+        shape = (den + temp + abar + zbar).shape
+        one = np.ones(shape)
+        den = den * one
+        temp = temp * one
+        abar = abar * one
+        zbar = zbar * one
+
         # use Frank's name convention for porting ease
         jmax = self.temp_n
         tlo = self.temp_log_min
@@ -192,7 +211,7 @@ class HelmTable(object):
         xnem = xni * zbar
 
         # access the table locations only once
-        fi = np.empty((36,) + np.shape(den * temp))
+        fi = np.empty((36,) + shape)
         fi[0] = self._f[iat, jat]
         fi[1] = self._f[iatp1, jat]
         fi[2] = self._f[iat, jatp1]
@@ -233,8 +252,8 @@ class HelmTable(object):
         # various differences
         xt = np.maximum((temp - self._t[jat]) * self._dti_sav[djat], 0.0)
         xd = np.maximum((din - self._d[iat]) * self._ddi_sav[diat], 0.0)
-        mxt = 1.0 - xt
-        mxd = 1.0 - xd
+        mxt = 1 - xt
+        mxd = 1 - xd
 
         # the six density and six temperature basis functions
         si0t = psi0(xt)
@@ -435,7 +454,7 @@ class HelmTable(object):
         x = din * din
         pele = x * df_d
         dpepdt = x * df_dt
-        dpepdd = ye * (x * df_dd + 2.0 * din * df_d)
+        # dpepdd = ye * (x * df_dd + 2.0 * din * df_d)
         s = dpepdd / ye - 2.0 * din * df_d
         dpepda = -ytot1 * (2.0 * pele + s * din)
         dpepdz = den * ytot1 * (2.0 * din * df_d + s)
@@ -479,80 +498,100 @@ class HelmTable(object):
         plasgdt = -plasg * ktinv * kerg
         plasgdz = 2.0 * plasg / zbar
 
+        ecoul = np.empty(shape)
+        pcoul = np.empty(shape)
+        scoul = np.empty(shape)
+        decouldd = np.empty(shape)
+        decouldt = np.empty(shape)
+        decoulda = np.empty(shape)
+        decouldz = np.empty(shape)
+        dpcouldd = np.empty(shape)
+        dpcouldt = np.empty(shape)
+        dpcoulda = np.empty(shape)
+        dpcouldz = np.empty(shape)
+        dscouldd = np.empty(shape)
+        dscouldt = np.empty(shape)
+        dscoulda = np.empty(shape)
+        dscouldz = np.empty(shape)
+
         # yakovlev & shalybkov 1989 equations 82, 85, 86, 87
-        if plasg >= 1.0:
-            x = plasg ** 0.25
-            y = avo * ytot1 * kerg
-            ecoul = y * temp * (a1 * plasg + b1 * x + c1 / x + d1)
-            pcoul = third * den * ecoul
-            idkbro = 3.0e0 * b1 * x - 5.0e0 * c1 / x + d1 * (np.log(plasg) - 1.0e0) - e1
-            scoul = -y * idkbro
+        loc = np.where(plasg >= 1.0)
+        if loc[0].size:
+            x = plasg[loc] ** 0.25
+            y = avo * ytot1[loc] * kerg
+            ecoul[loc] = y * temp[loc] * (a1 * plasg[loc] + b1 * x + c1 / x + d1)
+            pcoul[loc] = third * den[loc] * ecoul[loc]
+            idkbro = 3.0 * b1 * x - 5.0 * c1 / x + d1 * (np.log(plasg[loc]) - 1.0) - e1
+            scoul[loc] = -y * idkbro
 
-            y = avo * ytot1 * kt * (a1 + 0.25 / plasg * (b1 * x - c1 / x))
-            decouldd = y * plasgdd
-            decouldt = y * plasgdt + ecoul / temp
-            decoulda = y * plasgda - ecoul / abar
-            decouldz = y * plasgdz
+            y = avo * ytot1[loc] * kt[loc] * (a1 + 0.25 / plasg[loc] * (b1 * x - c1 / x))
+            decouldd[loc] = y * plasgdd[loc]
+            decouldt[loc] = y * plasgdt[loc] + ecoul[loc] / temp[loc]
+            decoulda[loc] = y * plasgda[loc] - (ecoul / abar)[loc]
+            decouldz[loc] = y * plasgdz[loc]
 
-            y = third * den
-            dpcouldd = third * ecoul + y * decouldd
-            dpcouldt = y * decouldt
-            dpcoulda = y * decoulda
-            dpcouldz = y * decouldz
+            y = third * den[loc]
+            dpcouldd[loc] = third * ecoul[loc] + y * decouldd[loc]
+            dpcouldt[loc] = y * decouldt[loc]
+            dpcoulda[loc] = y * decoulda[loc]
+            dpcouldz[loc] = y * decouldz[loc]
 
-            y = -avo * kerg / (abar * plasg) * (0.75 * b1 * x + 1.25 * c1 / x + d1)
-            dscouldd = y * plasgdd
-            dscouldt = y * plasgdt
-            dscoulda = y * plasgda - scoul / abar
-            dscouldz = y * plasgdz
+            y = -avo * kerg / abar[loc] * plasg[loc] * (.75 * b1 * x + 1.25 * c1 / x + d1)
+            dscouldd[loc] = y * plasgdd[loc]
+            dscouldt[loc] = y * plasgdt[loc]
+            dscoulda[loc] = y * plasgda[loc] - scoul[loc] / abar[loc]
+            dscouldz[loc] = y * plasgdz[loc]
 
         # yakovlev & shalybkov 1989 equations 102, 103, 104
-        else:
-            x = plasg * np.sqrt(plasg)
-            y = plasg ** b2
+        loc = np.where(plasg < 1.0)
+        if loc[0].size:
+            x = plasg[loc] * np.sqrt(plasg[loc])
+            y = plasg[loc] ** b2
             z = c2 * x - third * a2 * y
-            pcoul = -pion * z
-            ecoul = 3.0 * pcoul / den
-            scoul = -avo / abar * kerg * (c2 * x - a2 * (b2 - 1.0) / b2 * y)
+            pcoul[loc] = -pion[loc] * z
+            ecoul[loc] = 3.0 * pcoul[loc] / den[loc]
+            scoul[loc] = -avo / abar[loc] * kerg * (c2 * x - a2 * (b2 - 1.0) / b2 * y)
 
-            s = 1.5 * c2 * x / plasg - third * a2 * b2 * y / plasg
-            dpcouldd = -dpiondd * z - pion * s * plasgdd
-            dpcouldt = -dpiondt * z - pion * s * plasgdt
-            dpcoulda = -dpionda * z - pion * s * plasgda
-            dpcouldz = -dpiondz * z - pion * s * plasgdz
+            s = 1.5 * c2 * x / plasg[loc] - third * a2 * b2 * y / plasg[loc]
+            dpcouldd[loc] = -dpiondd[loc] * z - pion[loc] * s * plasgdd[loc]
+            dpcouldt[loc] = -dpiondt[loc] * z - pion[loc] * s * plasgdt[loc]
+            dpcoulda[loc] = -dpionda[loc] * z - pion[loc] * s * plasgda[loc]
+            dpcouldz[loc] = -dpiondz * z - pion[loc] * s * plasgdz[loc]
 
-            s = 3.0 / den
-            decouldd = s * dpcouldd - ecoul / den
-            decouldt = s * dpcouldt
-            decoulda = s * dpcoulda
-            decouldz = s * dpcouldz
+            s = 3.0 / den[loc]
+            decouldd[loc] = s * dpcouldd[loc] - ecoul[loc] / den[loc]
+            decouldt[loc] = s * dpcouldt[loc]
+            decoulda[loc] = s * dpcoulda[loc]
+            decouldz[loc] = s * dpcouldz[loc]
 
-            s = -avo * kerg / (abar * plasg) * (1.5 * c2 * x - a2 * (b2 - 1.0) * y)
-            dscouldd = s * plasgdd
-            dscouldt = s * plasgdt
-            dscoulda = s * plasgda - scoul / abar
-            dscouldz = s * plasgdz
+            s = -avo * kerg / (abar[loc] * plasg[loc]) * (
+                        1.5 * c2 * x - a2 * (b2 - 1.0) * y)
+            dscouldd[loc] = s * plasgdd[loc]
+            dscouldt[loc] = s * plasgdt[loc]
+            dscoulda[loc] = s * plasgda[loc] - scoul[loc] / abar[loc]
+            dscouldz[loc] = s * plasgdz[loc]
 
         x = prad + pion + pele + pcoul
         y = erad + eion + eele + ecoul
         z = srad + sion + sele + scoul
 
-        if (x < 0.0) or (y < 0.0):
-            pcoul = 0.0
-            dpcouldd = 0.0
-            dpcouldt = 0.0
-            dpcoulda = 0.0
-            dpcouldz = 0.0
-            ecoul = 0.0
-            decouldd = 0.0
-            decouldt = 0.0
-            decoulda = 0.0
-            decouldz = 0.0
-            scoul = 0.0
-            dscouldd = 0.0
-            dscouldt = 0.0
-            dscoulda = 0.0
-            dscouldz = 0.0
+        loc = np.where(np.logical_or(x < 0.0, y < 0.0))
+        if loc[0].size:
+            pcoul[loc] = 0.0
+            dpcouldd[loc] = 0.0
+            dpcouldt[loc] = 0.0
+            dpcoulda[loc] = 0.0
+            dpcouldz[loc] = 0.0
+            ecoul[loc] = 0.0
+            decouldd[loc] = 0.0
+            decouldt[loc] = 0.0
+            decoulda[loc] = 0.0
+            decouldz[loc] = 0.0
+            scoul[loc] = 0.0
+            dscouldd[loc] = 0.0
+            dscouldt[loc] = 0.0
+            dscoulda[loc] = 0.0
+            dscouldz[loc] = 0.0
 
         # sum all the gas components
         pgas = pion + pele + pcoul
@@ -617,77 +656,107 @@ class HelmTable(object):
         z = 1.0 + (egas + light2) * zzi
         sound_gas = clight * np.sqrt(gam1_gas / z)
 
+        # for the totals
+        zz = pres * deni
+        zzi = den / pres
+        chit = temp / pres * dpresdt
+        chid = dpresdd * zzi
+        cv = denerdt
+        x = zz * chit / (temp * cv)
+        gam3 = x + 1.0
+        gam1 = chit * x + chid
+        nabad = x / gam1
+        gam2 = 1.0 / (1.0 - nabad)
+        cp = cv * gam1 / chid
+        z = 1.0 + (ener + light2) * zzi
+        sound = clight * np.sqrt(gam1 / z)
+        asq = light2 * gam1 / z
+
         # maxwell relations; each is zero if the consistency is perfect
         x = den * den
         dse = temp * dentrdt / denerdt - 1.0
         dpe = (denerdd * x + temp * dpresdt) / pres - 1.0
         dsp = -dentrdd * x / dpresdt - 1.0
 
+
+        # MSBC: DEBUG
+        msbc_ft = self._ft[iat, jat]
+
         loc = locals()
-        ignore = ['x', 'y', 'z', 'zz', 'zzi']
+        ignore = ['loc', 'fi', 'x', 'y', 'z', 'zz', 'zzi']
         if outvar is None:
-            return {_translate.get(i, i): loc[i] for i in loc
-                    if i[0] != '_' and i not in ignore}
-        return {_translate.get(i): loc.get(i) for i in outvar if i not in ignore}
+            out = {_translate.get(i, i): loc[i] for i in loc
+                   if i[0] != '_' and i not in ignore}
+        else:
+            out = {_translate.get(i): loc.get(i) for i in outvar if i not in ignore}
+        if scalar_input:
+            tmp = dict()
+            for i in out:
+                try:
+                    tmp[i] = float(out[i])
+                except TypeError:
+                    tmp[i] = out[i]
+            out = tmp
+        return out
 
 
 # quintic hermite polynomial statement functions
 # psi0 and its derivatives
 def psi0(z):
-    return z ** 3 * (z * (-6.0 * z + 15.0) - 10.0) + 1.0
+    return z * z * z * (z * (-6 * z + 15) - 10) + 1
 
 
 def dpsi0(z):
-    return z * z * (z * (-30.0 * z + 60.0) - 30.0)
+    return z * z * (z * (-30 * z + 60) - 30)
 
 
 def ddpsi0(z):
-    return z * (z * (-120.0 * z + 180.0) - 60.0)
+    return z * (z * (-120 * z + 180) - 60)
 
 
 # psi1 and its derivatives
 def psi1(z):
-    return z * (z * z * (z * (-3.0 * z + 8.0) - 6.0) + 1.0)
+    return z * (z ** 2 * (z * (-3 * z + 8) - 6) + 1)
 
 
 def dpsi1(z):
-    return z * z * (z * (-15.0 * z + 32.0) - 18.0) + 1.0
+    return z * z * (z * (-15 * z + 32) - 18) + 1
 
 
 def ddpsi1(z):
-    return z * (z * (-60.0 * z + 96.0) - 36.0)
+    return z * (z * (-60 * z + 96) - 36)
 
 
 # psi2  and its derivatives
 def psi2(z):
-    return 0.5 * z * z * (z * (z * (-z + 3.0) - 3.0) + 1.0)
+    return 0.5 * z * z * (z * (z * (-z + 3) - 3) + 1)
 
 
 def dpsi2(z):
-    return 0.5 * z * (z * (z * (-5.0 * z + 12.0) - 9.0) + 2.0)
+    return 0.5 * z * (z * (z * (-5 * z + 12) - 9) + 2)
 
 
 def ddpsi2(z):
-    return 0.5 * (z * (z * (-20.0 * z + 36.0) - 18.0) + 2.0)
+    return 0.5 * (z * (z * (-20 * z + 36) - 18) + 2)
 
 
 # cubic hermite polynomial statement functions
 # psi0 & derivatives
 def xpsi0(z):
-    return z * z * (2.0 * z - 3.0) + 1.0
+    return z * z * (2 * z - 3) + 1.0
 
 
 def xdpsi0(z):
-    return z * (6.0 * z - 6.0)
+    return z * (6 * z - 6)
 
 
 # psi1 & derivatives
 def xpsi1(z):
-    return z * (z * (z - 2.0) + 1.0)
+    return z * (z * (z - 2) + 1)
 
 
 def xdpsi1(z):
-    return z * (3.0 * z - 4.0) + 1.0
+    return z * (3 * z - 4) + 1
 
 
 # biquintic hermite polynomial statement function
