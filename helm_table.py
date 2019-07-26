@@ -4,6 +4,8 @@ from . import table_param as tab
 from .phys_const import *
 
 
+_default_fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helm_table.dat")
+
 def OldStyleInputs(fn=None, jmax=None, tlo=None, thi=None, imax=None, dlo=None, dhi=None):
     """Use Frank's variable names to call HelmTable"""
     return HelmTable(fn=fn, temp_n=jmax, temp_log_min=tlo, temp_log_max=thi, dens_n=imax,
@@ -17,8 +19,7 @@ class HelmTable(object):
                  dens_n=None, dens_log_min=None, dens_log_max=None):
         # set defaults
         if fn is None:
-            fn = "helm_table.dat"
-            fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), fn)
+            fn = _default_fn
         if temp_n is None:
             temp_n = tab.temp_n
         if temp_log_min is None:
@@ -705,6 +706,8 @@ class _DelayedTable(HelmTable):
     def __init__(self, fn=None, temp_n=None, temp_log_min=None, temp_log_max=None,
                  dens_n=None, dens_log_min=None, dens_log_max=None, silent=False):
         self._silent = silent
+        if fn is None:
+            fn = _default_fn
         self._kwargs = dict(fn=fn, temp_n=temp_n, temp_log_min=temp_log_min,
                             temp_log_max=temp_log_max, dens_n=dens_n,
                             dens_log_min=dens_log_min, dens_log_max=dens_log_max)
