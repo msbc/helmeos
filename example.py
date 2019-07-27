@@ -33,7 +33,7 @@ print()
 # load default table
 print("~ Load default table ~")
 default = helmeos.HelmTable()
-out = default.eos_call(density, temperature, abar, zbar)
+out = default.eos_DT(density, temperature, abar, zbar)
 for i in vars_to_print:
     print(fmt.format(i, *out[i]))
 print()
@@ -42,7 +42,7 @@ print()
 print("~ Load table by filename ~")
 fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helm_table.dat")
 by_filename = helmeos.HelmTable(fn=fn, temp_n=201, dens_n=541)
-out = by_filename.eos_call(density, temperature, abar, zbar)
+out = by_filename.eos_DT(density, temperature, abar, zbar)
 for i in vars_to_print:
     print(fmt.format(i, *out[i]))
 print()

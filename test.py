@@ -36,7 +36,7 @@ for i in dens:
 
 print("Loading tables.")
 # our method
-ours = ht.eos_call(rho_in, temp_in, 1.0, 1.0)
+ours = ht.eos_DT(rho_in, temp_in, 1.0, 1.0)
 # their method
 theirs = helmholtz.helmeos(rho_in, temp_in, 1.0, 1.0)
 

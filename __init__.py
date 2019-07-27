@@ -4,5 +4,5 @@ from .helm_table import HelmTable, _DelayedTable
 default = _DelayedTable()
 
 
-def eos_call(den, temp, abar, zbar, outvar=None):
-    return default.eos_call(den, temp, abar, zbar, outvar=outvar)
+def eos_DT(den, temp, abar, zbar, outvar=None):
+    return default.eos_DT(den, temp, abar, zbar, outvar=outvar)

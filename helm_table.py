@@ -105,7 +105,7 @@ class HelmTable(object):
         self._dd2i_sav = self._ddi_sav ** 2
         self._dd3i_sav = self._ddi_sav * self._dd2i_sav
 
-    def eos_call(self, den, temp, abar, zbar, outvar=None):
+    def eos_DT(self, den, temp, abar, zbar, outvar=None):
         scalar_input = False
         if ((not hasattr(den, "dtype")) and (not hasattr(temp, "dtype"))
                 and (not hasattr(abar, "dtype")) and (not hasattr(zbar, "dtype"))):
