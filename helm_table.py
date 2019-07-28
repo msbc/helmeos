@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from scipy.optimize import fsolve
 from . import table_param as tab
 from .phys_const import *
 
@@ -105,6 +106,9 @@ class HelmTable(object):
         self._dd2i_sav = self._ddi_sav ** 2
         self._dd3i_sav = self._ddi_sav * self._dd2i_sav
 
+        # inversion function
+        self.eos_invert = np.vectorize(self._scalar_eos_invert)
+
     def eos_DT(self, den, temp, abar, zbar, outvar=None):
         scalar_input = False
         if ((not hasattr(den, "dtype")) and (not hasattr(temp, "dtype"))
@@ -136,9 +140,11 @@ class HelmTable(object):
         din = ye * den
 
         jat = np.floor((np.log10(temp) - tlo) * tstpi).astype(int)
+        jat = np.maximum(0, jat)
         jatp1 = np.minimum(jmax - 1, jat + 1)
         djat = np.minimum(jmax - 2, jat)
         iat = np.floor((np.log10(den) - dlo) * dstpi).astype(int)
+        iat = np.maximum(0, iat)
         iatp1 = np.minimum(imax - 1, iat + 1)
         diat = np.minimum(imax - 2, iat)
         deni = 1.0 / den
@@ -679,9 +685,6 @@ class HelmTable(object):
         dpe = (denerdd * x + temp * dpresdt) / pres - 1.0
         dsp = -dentrdd * x / dpresdt - 1.0
 
-        # MSBC: DEBUG
-        msbc_ft = self._ft[iat, jat]
-
         loc = locals()
         ignore = ['loc', 'fi', 'x', 'y', 'z', 'zz', 'zzi']
         if outvar is None:
@@ -698,6 +701,19 @@ class HelmTable(object):
                     tmp[i] = out[i]
             out = tmp
         return out
+
+    def _invert_helper(self, log_t, dens, abar, zbar, var, var_name):
+        out = self.eos_DT(dens, 10**log_t, abar, zbar)[var_name]
+        return out / var - 1
+
+    def _scalar_eos_invert(self, dens, abar, zbar, var, var_name, t0=None):
+        if t0 is None:
+            t0 = .5 * (self.temp_log_min + self.temp_log_max)
+        else:
+            to = np.log10(t0)
+        out = fsolve(self._invert_helper, t0, args=(dens, abar, zbar, var, var_name))
+        return float(10**out)
+
 
 
 class _DelayedTable(HelmTable):
