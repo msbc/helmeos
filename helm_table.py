@@ -4,8 +4,8 @@ from scipy.optimize import fsolve
 from . import table_param as tab
 from .phys_const import *
 
-
 _default_fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helm_table.dat")
+
 
 def OldStyleInputs(fn=None, jmax=None, tlo=None, thi=None, imax=None, dlo=None, dhi=None):
     """Use Frank's variable names to call HelmTable"""
@@ -41,6 +41,7 @@ class HelmTable(object):
         self.dens_n = dens_n
         self.dens_log_min = dens_log_min
         self.dens_log_max = dens_log_max
+        self._full_table = None
         jmax = temp_n
         tlo = temp_log_min
         thi = temp_log_max
@@ -135,16 +136,19 @@ class HelmTable(object):
         dhi = self.dens_log_max
         dstpi = self._dstpi
 
+        den = np.maximum(10 ** dlo, np.minimum(10 ** dhi, den))
+        temp = np.maximum(10 ** tlo, np.minimum(10 ** thi, temp))
+
         ytot1 = 1.0 / abar
         ye = np.maximum(1.0e-16, ytot1 * zbar)
         din = ye * den
 
         jat = np.floor((np.log10(temp) - tlo) * tstpi).astype(int)
-        jat = np.maximum(0, jat)
+        jat = np.minimum(jmax - 1, np.maximum(0, jat))
         jatp1 = np.minimum(jmax - 1, jat + 1)
         djat = np.minimum(jmax - 2, jat)
         iat = np.floor((np.log10(den) - dlo) * dstpi).astype(int)
-        iat = np.maximum(0, iat)
+        iat = np.minimum(imax - 1, np.maximum(0, iat))
         iatp1 = np.minimum(imax - 1, iat + 1)
         diat = np.minimum(imax - 2, iat)
         deni = 1.0 / den
@@ -703,7 +707,7 @@ class HelmTable(object):
         return out
 
     def _invert_helper(self, log_t, dens, abar, zbar, var, var_name):
-        out = self.eos_DT(dens, 10**log_t, abar, zbar)[var_name]
+        out = self.eos_DT(dens, 10 ** log_t, abar, zbar)[var_name]
         return out / var - 1
 
     def _scalar_eos_invert(self, dens, abar, zbar, var, var_name, t0=None):
@@ -712,8 +716,60 @@ class HelmTable(object):
         else:
             to = np.log10(t0)
         out = fsolve(self._invert_helper, t0, args=(dens, abar, zbar, var, var_name))
-        return float(10**out)
+        return float(10 ** out)
 
+    def full_table(self, abar=1.0, zbar=1.0, overwite=False):
+        if overwite:
+            self._full_table = None
+        if self._full_table is not None:
+            return self._full_table
+        d, t = np.meshgrid(self._d, self._t, indexing='ij')
+        self._full_table = self.eos_DT(d, t, abar, zbar)
+        return self._full_table
+
+    def plot_var(self, var, log=False, abar=1.0, zbar=1.0, fig=None, ax=None, cb=True,
+                 aspect=None, vmin=None, vmax=None, fig_opt=None, dpi=None, figsize=None,
+                 popt=None, cmap=None, cbl=None):
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        from matplotlib.colors import LogNorm
+
+        ft = self.full_table(abar, zbar)
+
+        if popt is None:
+            popt = dict()
+
+        norm = None
+        if log:
+            norm = LogNorm()
+
+        extent = [self.dens_log_min, self.dens_log_max,
+                  self.temp_log_min, self.temp_log_max]
+
+        _popt = {'norm': norm, 'extent': extent, 'aspect': aspect, 'vmin': vmin,
+                 'vmax': vmax, 'cmap': cmap}
+        _popt.update(popt)
+
+        if fig is None and ax is None:
+            _fopt = {'dpi': dpi, 'figsize': figsize}
+            if fig_opt is None:
+                fig_opt = {}
+            _fopt.update(fig_opt)
+            fig = plt.figure(**_fopt)
+        if ax is not None:
+            plt.sca(ax)
+
+        im = plt.imshow(ft[var].T, **_popt)
+        ax = plt.gca()
+
+        if cb:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cb = plt.colorbar(im, cax=cax)
+            if cbl is None:
+                cbl = var
+            if cbl:
+                cb.set_label(cbl)
 
 
 class _DelayedTable(HelmTable):
@@ -734,7 +790,7 @@ class _DelayedTable(HelmTable):
         self.initB = False
         for attr in self.names:
             val = inherit[attr]
-            if hasattr(val, '__call__'):
+            if hasattr(val, '__call__') or attr in ['eos_interp']:
                 setattr(self, attr, self.wrapped_func(attr))
 
     def load(self):
