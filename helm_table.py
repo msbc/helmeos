@@ -1,10 +1,11 @@
 import numpy as np
 import os
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, root_scalar
 from . import table_param as tab
 from .phys_const import *
 
 _default_fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helm_table.dat")
+_maxiter = None
 
 
 def OldStyleInputs(fn=None, jmax=None, tlo=None, thi=None, imax=None, dlo=None, dhi=None):
@@ -108,7 +109,10 @@ class HelmTable(object):
         self._dd3i_sav = self._ddi_sav * self._dd2i_sav
 
         # inversion function
-        self.eos_invert = np.vectorize(self._scalar_eos_invert)
+        self._vec_inv_with_d = np.vectorize(self._scalar_eos_invert_with_d,
+                                            otypes=[np.float64])
+        self._vec_inv_no_d = np.vectorize(self._scalar_eos_invert_no_d,
+                                          otypes=[np.float64])
 
     def eos_DT(self, den, temp, abar, zbar, outvar=None):
         scalar_input = False
@@ -690,12 +694,12 @@ class HelmTable(object):
         dsp = -dentrdd * x / dpresdt - 1.0
 
         loc = locals()
-        ignore = ['loc', 'fi', 'x', 'y', 'z', 'zz', 'zzi']
+        ignore = ['loc', 'fi', 'x', 'y', 'z', 'zz', 'zzi', 'self']
         if outvar is None:
             out = {_translate.get(i, i): loc[i] for i in loc
                    if i[0] != '_' and i not in ignore}
         else:
-            out = {_translate.get(i): loc.get(i) for i in outvar if i not in ignore}
+            out = {_translate.get(i, i): loc[i] for i in outvar if i not in ignore}
         if scalar_input:
             tmp = dict()
             for i in out:
@@ -706,17 +710,106 @@ class HelmTable(object):
             out = tmp
         return out
 
-    def _invert_helper(self, log_t, dens, abar, zbar, var, var_name):
-        out = self.eos_DT(dens, 10 ** log_t, abar, zbar)[var_name]
-        return out / var - 1
+    def _invert_helper_with_der(self, temp, dens, abar, zbar, var, var_name, der_name):
+        data = self.eos_DT(dens, temp, abar, zbar)
+        ivar = 1.0 / var
+        out = float(data[var_name]) * ivar - 1
+        der = float(data[der_name]) * ivar
+        return out, der
 
-    def _scalar_eos_invert(self, dens, abar, zbar, var, var_name, t0=None):
-        if t0 is None:
-            t0 = .5 * (self.temp_log_min + self.temp_log_max)
+    def _invert_helper_without_der(self, log_t, dens, abar, zbar, var, var_name):
+        return self.eos_DT(dens, 10 ** log_t, abar, zbar)[var_name] / var - 1.0
+
+    def _adaptive_root_find(self, x0=None, args=None, maxiter=100, bracket=None,
+                            tol=1e-10, newt_err=0.1):
+        func = self._invert_helper_with_der
+        var = args[3]
+        if bracket is None:
+            bracket = 10 ** np.array([self.temp_log_min, self.temp_log_max])
+
+        if x0 in bracket:
+            raise ValueError
+
+        tmp = func(x0, *args)
+        if tmp[0] <= 0:
+            if x0 > bracket[0]:
+                bracket[0] = x0
         else:
-            to = np.log10(t0)
-        out = fsolve(self._invert_helper, t0, args=(dens, abar, zbar, var, var_name))
-        return float(10 ** out)
+            if x0 < bracket[1]:
+                bracket[1] = x0
+        if np.abs(tmp[0]) > newt_err:
+            xlast = bracket[0]
+            flast = func(xlast, *args)[0]
+        # else:
+        #    x0 = x0 - tmp[0] / tmp[1]
+        mode = 0
+        n = 0
+        while np.abs(tmp[0]) > tol:
+            # if error is large take secant method step
+            if np.abs(tmp[0]) > newt_err:
+                delta = tmp[0] * (x0 - xlast) / (tmp[0] - flast)
+                xlast = x0
+                x0 -= delta
+                flast = tmp[0]
+                mode = 2
+            # if error is small take Newton–Raphson step
+            else:
+                delta = tmp[0] / tmp[1]
+                xlast = x0
+                x0 -= delta
+                flast = tmp[0]
+                mode = 3
+            # if we are outside brackets use bisection method for a step
+            if x0 < bracket[0] or x0 > bracket[1] or not np.isfinite(x0):
+                x0 = np.sqrt(np.prod(bracket))
+                mode = 1
+            tmp = func(x0, *args)
+            # update bracketing values
+            if tmp[0] <= 0:
+                bracket[0] = x0
+            else:
+                bracket[1] = x0
+            n += 1
+            if n > maxiter:
+                raise ValueError("Did not converge.")
+        return x0
+
+    def _scalar_eos_invert_with_d(self, dens, abar, zbar, var, var_name, der_name, t0,
+                                  t1):
+        out = self._adaptive_root_find(x0=t0,
+                                       args=(dens, abar, zbar, var, var_name, der_name))
+        return out
+
+    def _scalar_eos_invert_no_d(self, dens, abar, zbar, var, var_name, lt0, lt1):
+        out = root_scalar(self._invert_helper_without_der, x0=lt0, x1=lt1,
+                          args=(dens, abar, zbar, var, var_name), maxiter=_maxiter,
+                          bracket=[self.temp_log_min, self.temp_log_max])
+        try:
+            assert out.converged
+        except AssertionError:
+            raise ValueError("Root not converged.")
+        return 10 ** out.root
+
+    def eos_invert(self, dens, abar, zbar, var, var_name, der_name=None, t0=None,
+                   t1=None):
+        if t0 is None:
+            t0 = 10 ** (.5 * (self.temp_log_min + self.temp_log_max))
+        if t1 is None:
+            t1 = 2 * t0
+        if der_name is None:
+            der_name = _derivatives.get(var_name, None)
+        if der_name is None:
+            try:
+                lt0 = np.log10(t0)
+            except AttributeError:
+                lt0 = None
+            try:
+                lt1 = np.log10(t1)
+            except AttributeError:
+                lt1 = None
+            return self._vec_inv_no_d(dens, abar, zbar, var, var_name, lt0, lt1)
+        else:
+            return self._vec_inv_with_d(dens, abar, zbar, var, var_name, der_name, t0, t1)
 
     def full_table(self, abar=1.0, zbar=1.0, overwite=False):
         if overwite:
@@ -828,7 +921,7 @@ def ddpsi0(z):
 
 # psi1 and its derivatives
 def psi1(z):
-    return z * (z ** 2 * (z * (-3 * z + 8) - 6) + 1)
+    return z * (z * z * (z * (-3 * z + 8) - 6) + 1)
 
 
 def dpsi1(z):
@@ -941,3 +1034,5 @@ _translate = {"pres": "ptot", "dpresdt": "dpt", "dpresdd": "dpd", "dpresda": "dp
               "nabad_gas": "nabad_gas", "sound_gas": "cs_gas", "cv": "cv", "cp": "cp",
               "gam1": "gam1", "gam2": "gam2", "gam3": "gam3", "nabad": "nabad",
               "sound": "cs"}
+
+_derivatives = {"etot": "det", "ptot": "dpt"}
