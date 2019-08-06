@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from scipy.optimize import fsolve, root_scalar
+from scipy.optimize import fsolve
 from . import table_param as tab
 from .phys_const import *
 
@@ -781,9 +781,8 @@ class HelmTable(object):
         return out
 
     def _scalar_eos_invert_no_d(self, dens, abar, zbar, var, var_name, lt0, lt1):
-        out = root_scalar(self._invert_helper_without_der, x0=lt0, x1=lt1,
-                          args=(dens, abar, zbar, var, var_name), maxiter=_maxiter,
-                          bracket=[self.temp_log_min, self.temp_log_max])
+        out = fsolve(self._invert_helper_without_der, x0=lt0,
+                     args=(dens, abar, zbar, var, var_name))
         try:
             assert out.converged
         except AssertionError:
