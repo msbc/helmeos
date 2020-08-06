@@ -752,7 +752,7 @@ class HelmTable(object):
                 x0 -= delta
                 flast = tmp[0]
                 mode = 2
-            # if error is small take Newton–Raphson step
+            # if error is small take Newton-Raphson step
             else:
                 delta = tmp[0] / tmp[1]
                 xlast = x0
