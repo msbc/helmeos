@@ -151,7 +151,7 @@ class HelmTable(object):
         jat = np.minimum(jmax - 1, np.maximum(0, jat))
         jatp1 = np.minimum(jmax - 1, jat + 1)
         djat = np.minimum(jmax - 2, jat)
-        iat = np.floor((np.log10(den) - dlo) * dstpi).astype(int)
+        iat = np.floor((np.log10(din) - dlo) * dstpi).astype(int)
         iat = np.minimum(imax - 1, np.maximum(0, iat))
         iatp1 = np.minimum(imax - 1, iat + 1)
         diat = np.minimum(imax - 2, iat)
