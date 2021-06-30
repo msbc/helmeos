@@ -906,6 +906,13 @@ class _DelayedTable(HelmTable):
         out.__doc__ = getattr(self, name).__doc__
         return out
 
+    def __getattr__(self, item):
+        if item in self._kwargs:
+            self.load()
+            return self.__getattribute__(item)
+        raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__,
+                                                                        item))
+
 
 # quintic hermite polynomial statement functions
 # psi0 and its derivatives
