@@ -695,11 +695,14 @@ class HelmTable(object):
 
         loc = locals()
         ignore = ['loc', 'fi', 'x', 'y', 'z', 'zz', 'zzi', 'self']
-        if outvar is None:
-            out = {_translate.get(i, i): loc[i] for i in loc
-                   if i[0] != '_' and i not in ignore}
-        else:
-            out = {_translate.get(i, i): loc[i] for i in outvar if i not in ignore}
+        out = {_translate.get(i, i): loc[i] for i in loc
+               if i[0] != '_' and i not in ignore}
+        if outvar is not None:
+            outvar = np.atleast_1d(outvar)
+            alt = {i: _translate.get(i, i) for i in outvar}
+            tmp = {i: out[i] for i in out if i in outvar}
+            tmp.update({i: out[alt[i]] for i in outvar})
+            out = tmp
         if scalar_input:
             tmp = dict()
             for i in out:
