@@ -179,7 +179,7 @@ class AthenaTable(AthenaEOS):
     def imshow(self, data, save=False, fn=None, fig=None, ax=None, fig_opt=None, dpi=None,
                figsize=None, log=False, popt=None, cb=True, cbl=None, aspect='auto',
                title=None, lbls=True, vmin=None, vmax=None, ext='png', lr=0, cbax=None,
-               interpolation='nearest'):
+               interpolation='nearest', origin='lower'):
         import matplotlib as mpl
         import matplotlib.pyplot as plt
         from matplotlib.colors import LogNorm
@@ -203,8 +203,8 @@ class AthenaTable(AthenaEOS):
         if log:
             norm = LogNorm()
         extent = [self.lrho[0], self.lrho[-1], self.le[0] + lr, self.le[-1] + lr]
-        _popt = {'norm': norm, 'extent': extent, 'aspect': aspect, 'vmin': vmin,
-                 'vmax': vmax, 'interpolation': interpolation}
+        _popt = dict(norm=norm, extent=extent, aspect=aspect, vmin=vmin, vmax=vmax,
+                     interpolation=interpolation, origin=origin)
         _popt.update(popt)
 
         if fig is None and ax is None:
