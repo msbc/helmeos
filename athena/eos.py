@@ -224,6 +224,7 @@ class AthenaTable(AthenaEOS):
             else:
                 cb = plt.colorbar(im)
             cb.ax.tick_params(axis='both', direction='in')
+            cb.ax.yaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
             if cbl is None:
                 try:
                     if str(var) == var:
@@ -266,6 +267,7 @@ class AthenaTable(AthenaEOS):
                 fig_opt = {}
             _fopt.update(fig_opt)
             fig = plt.figure(**_fopt)
+            fig.set_tight_layout(False)
         gs = GridSpec(2, 5, width_ratios=[1, .05, .4, 1, .05], wspace=.1, hspace=.15,
                       left=.1, top=.98, right=.9, bottom=.1)
         axs = [plt.subplot(gs[0, 0])]
