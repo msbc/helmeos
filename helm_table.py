@@ -2,7 +2,8 @@ import numpy as np
 import os
 from scipy.optimize import fsolve
 from . import table_param as tab
-from .phys_const import *
+from .phys_const import kerg, kergavo, avo, asoli3, sioncon, third, forth, pi, esqu, \
+    a1, a2, b1, b2, c1, c2, d1, e1, light2, clight
 
 _default_fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helm_table.dat")
 _maxiter = None
@@ -209,10 +210,10 @@ class HelmTable(object):
         y = np.log(z)
         sion = (pion * deni + eion) * tempi + kergavo * ytot1 * y
         dsiondd = (dpiondd * deni - pion * deni * deni + deiondd) * tempi \
-                  - kergavo * deni * ytot1
+            - kergavo * deni * ytot1
 
         dsiondt = (dpiondt * deni + deiondt) * tempi - (pion * deni + eion) * tempi ** 2 \
-                  + 1.5 * kergavo * tempi * ytot1
+            + 1.5 * kergavo * tempi * ytot1
 
         x = avo * kerg / abar
         dsionda = (dpionda * deni + deionda) * tempi + kergavo * ytot1 ** 2 * (2.5 - y)
@@ -726,7 +727,7 @@ class HelmTable(object):
     def _adaptive_root_find(self, x0=None, args=None, maxiter=100, bracket=None,
                             tol=1e-10, newt_err=0.1):
         func = self._invert_helper_with_der
-        var = args[3]
+        # var = args[3]
         if bracket is None:
             bracket = 10 ** np.array([self.temp_log_min, self.temp_log_max])
 
@@ -745,7 +746,7 @@ class HelmTable(object):
             flast = func(xlast, *args)[0]
         # else:
         #    x0 = x0 - tmp[0] / tmp[1]
-        mode = 0
+        # mode = 0
         n = 0
         while np.abs(tmp[0]) > tol:
             # if error is large take secant method step
@@ -754,18 +755,18 @@ class HelmTable(object):
                 xlast = x0
                 x0 -= delta
                 flast = tmp[0]
-                mode = 2
+                # mode = 2
             # if error is small take Newton-Raphson step
             else:
                 delta = tmp[0] / tmp[1]
                 xlast = x0
                 x0 -= delta
                 flast = tmp[0]
-                mode = 3
+                # mode = 3
             # if we are outside brackets use bisection method for a step
             if x0 < bracket[0] or x0 > bracket[1] or not np.isfinite(x0):
                 x0 = np.sqrt(np.prod(bracket))
-                mode = 1
+                # mode = 1
             tmp = func(x0, *args)
             # update bracketing values
             if tmp[0] <= 0:
