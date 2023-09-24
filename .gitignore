@@ -126,3 +126,10 @@ dmypy.json
 # temporary editor files
 *~
 *.swp
+
+# pycharm
+.idea
+
+# athena
+athena
+eos
