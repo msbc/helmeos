@@ -1,19 +1,20 @@
 """Test accuracy of code"""
 import numpy as np
-from ..helm_table import HelmTable
-from .. import table_param as tab
+from helmeos import HelmTable
+import helmeos.table_param as tab
 try:
     import helmholtz
 except ImportError:
     print('Python package "helmholtz" not found.')
     print('See https://github.com/jschwab/python-helmholtz for code download.')
+    raise
 
 
 class TestingError(RuntimeError):
     pass
 
 
-def test_code(nrand=100, vars_to_test=None, silent=False, tol=1e-12):
+def test_table(nrand=100, vars_to_test=None, silent=False, tol=1e-12):
     if vars_to_test is None:
         vars_to_test = ['etot', 'ptot', 'cs', 'sele']
 
@@ -65,4 +66,4 @@ def test_code(nrand=100, vars_to_test=None, silent=False, tol=1e-12):
 
 
 if __name__ == "__main__":
-    test_code(silent=False)
+    test_table(silent=False)
