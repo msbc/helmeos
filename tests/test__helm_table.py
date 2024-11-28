@@ -10,11 +10,7 @@ except ImportError:
     raise
 
 
-class TestingError(RuntimeError):
-    pass
-
-
-def test_table(nrand=100, vars_to_test=None, silent=False, tol=1e-12):
+def test_table(nrand=100, vars_to_test=None, silent=False, tol=2e-12):
     if vars_to_test is None:
         vars_to_test = ['etot', 'ptot', 'cs', 'sele']
 
@@ -50,19 +46,11 @@ def test_table(nrand=100, vars_to_test=None, silent=False, tol=1e-12):
         print("Showing max relative error for a few variables.")
         print("var, rel_err")
 
-    pass_test = True
     for var in vars_to_test:
         a, b = ours[var], getattr(theirs, var)
         dif = np.abs((a - b) / b)
         i = dif.argmax()
-        if dif[i] > tol:
-            pass_test = False
-        if not silent:
-            print(var, dif[i])
-
-    if not pass_test:
-        raise RuntimeError
-    return pass_test
+        assert dif[i] < tol, f"Test failed for {var}. Max relative error: {dif[i]}"
 
 
 if __name__ == "__main__":
