@@ -10,12 +10,17 @@ except ImportError:
     raise
 
 
-def test_table(nrand=100, vars_to_test=None, silent=False, tol=2e-12):
+def test_table(nrand=100, vars_to_test=None, silent=False, err_dict=None, tol=1e-14):
+    if err_dict is None:
+        err_dict = {'etot': 4e-15, 'ptot': 6e-16, 'cs': 3e-13, 'sele': 0}
     if vars_to_test is None:
         vars_to_test = ['etot', 'ptot', 'cs', 'sele']
+    var_len = max(len(i) for i in vars_to_test)
+    fmt = f"{{:{var_len}s}}, {{:}}"
 
     ht = HelmTable()
 
+    np.random.seed(0)  # for reproducibility
     # density
     dlo, dhi = tab.dens_log_min, tab.dens_log_max
     dens = np.arange(dlo, dhi + 1)
@@ -44,13 +49,15 @@ def test_table(nrand=100, vars_to_test=None, silent=False, tol=2e-12):
 
     if not silent:
         print("Showing max relative error for a few variables.")
-        print("var, rel_err")
+        print(fmt.format("var", "rel_err"))
 
     for var in vars_to_test:
         a, b = ours[var], getattr(theirs, var)
         dif = np.abs((a - b) / b)
         i = dif.argmax()
-        assert dif[i] < tol, f"Test failed for {var}. Max relative error: {dif[i]}"
+        mytol = err_dict.get(var, tol)
+        assert dif[i] <= mytol, f"Test failed for {var}. Max relative error: {dif[i]}"
+        print(fmt.format(var, dif[i]))
 
 
 if __name__ == "__main__":
