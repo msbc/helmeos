@@ -1,3 +1,4 @@
+__version__ = "1.0.0.dev0"
 from .helm_table import HelmTable, _DelayedTable
 
 # create the default helmholtz table
