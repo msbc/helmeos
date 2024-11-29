@@ -826,9 +826,15 @@ class HelmTable(object):
     def plot_var(self, var, log=False, abar=1.0, zbar=1.0, fig=None, ax=None, cb=True,
                  aspect=None, vmin=None, vmax=None, fig_opt=None, dpi=None, figsize=None,
                  popt=None, cmap=None, cbl=None):
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
-        from matplotlib.colors import LogNorm
+        try:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            from matplotlib.colors import LogNorm
+        except ImportError:
+            msg = "Matplotlib not found. Please install matplotlib to use this method.\n"
+            msg += 'Alternatively, you can specify the "plotting" option when installing helmeos:\n'
+            msg += '`pip install helmeos[plotting]`'
+            raise ImportError(msg)
 
         ft = self.full_table(abar, zbar)
 
