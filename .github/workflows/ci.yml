@@ -1,0 +1,42 @@
+name: Tox CI with Conda
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10, 3.11, 3.12, 3.13]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          auto-activate-base: false
+
+      - name: Create and activate environment
+        run: |
+          conda create -n test-env python=${{ matrix.python-version }} -y
+          conda activate test-env
+          pip install tox tox-conda
+
+      - name: Install GCC and GFortran
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc gfortran
+
+      - name: Run Tox
+        run: tox
+
