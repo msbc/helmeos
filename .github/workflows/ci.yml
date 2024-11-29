@@ -28,9 +28,9 @@ jobs:
 
       - name: Create and activate environment
         run: |
-          conda create -n test-env python=${{ matrix.python-version }} -y
+          conda create -n test-env python=${{ matrix.python-version }} tox tox-conda -y
+          source /usr/share/miniconda/etc/profile.d/conda.sh
           conda activate test-env
-          pip install tox tox-conda
 
       - name: Install GCC and GFortran
         run: |
