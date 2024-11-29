@@ -1,3 +1,34 @@
+[project]
+name = "helmeos"
+description = "A Python implementation/port of Frank Timmes' Helmholtz EoS."
+authors = [{name = "Matthew S. B. Coleman", email = "msbc@princeton.edu"}]
+maintainers = [{name = "Matthew S. B. Coleman", email = "msbc@princeton.edu"}]
+dynamic = ["version"]
+readme = "README.md"
+dependencies = [
+    "numpy",
+    "scipy",
+]
+license = {text = "MIT License"}
+keywords = ["equation of state", "helmeos", "eos", "thermodynamics",
+            "astrophysics", "astronomy", "physics"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Repository = "https://github.com/msbc/helmeos"
+
+[project.optional-dependencies]
+plotting = ["matplotlib"]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["helmeos"]
