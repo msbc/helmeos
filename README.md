@@ -18,4 +18,4 @@ This is only tested on Python3.
 
 ## Example
 
-See [example.py](example.py) for example code.
+See [example.py](helmeos/example.py) for example code.
