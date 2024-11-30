@@ -1,6 +1,7 @@
 """Test accuracy of code"""
 import numpy as np
-from helmeos import HelmTable
+from helmeos import HelmTable, default
+from helmeos.helm_table import OldStyleInputs, _translate, _DelayedTable
 import helmeos.table_param as tab
 try:
     import helmholtz
@@ -10,7 +11,7 @@ except ImportError:
     raise
 
 
-def test_table(nrand=100, vars_to_test=None, silent=False, err_dict=None, tol=1e-14):
+def test_table_values(nrand=100, vars_to_test=None, silent=False, err_dict=None, tol=1e-14):
     if err_dict is None:
         err_dict = {'etot': 4e-15, 'ptot': 6e-16, 'cs': 3e-13, 'sele': 0}
     if vars_to_test is None:
@@ -60,5 +61,28 @@ def test_table(nrand=100, vars_to_test=None, silent=False, err_dict=None, tol=1e
         print(fmt.format(var, dif[i]))
 
 
+def test_table_features():
+    ht = HelmTable()
+    ot = OldStyleInputs()
+    dt = _DelayedTable()
+    assert default.fn == ht.fn
+    h_data = ht.full_table(overwite=True)
+    o_data = ot.full_table()
+    assert h_data.keys() == o_data.keys()
+    for key in h_data:
+        assert np.all(h_data[key] == o_data[key])
+    # test cache
+    h_data = ht.full_table()
+    for key in h_data:
+        assert np.all(h_data[key] == o_data[key])
+    data = ot.eos_DT(1e-7, 1e4, 1.0, 1.0)
+    assert ht.eos_DT(1e-7, 1e4, 1.0, 1.0) == data
+    assert dt.eos_DT(1e-7, 1e4, 1.0, 1.0) == data
+    for key, val in _translate.items():
+        assert ot.eos_DT(1e-7, 1e4, 1.0, 1.0, outvar=key)[key] == data[val]
+        assert ot.eos_DT(1e-7, 1e4, 1.0, 1.0, outvar=val)[val] == data[val]
+
+
 if __name__ == "__main__":
-    test_table(silent=False)
+    test_table_values()
+    test_table_features()
