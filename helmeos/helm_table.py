@@ -704,8 +704,8 @@ class HelmTable(object):
             tmp = dict()
             for i in out:
                 try:
-                    tmp[i] = float(out[i])
-                except TypeError:
+                    tmp[i] = out[i][0]
+                except (TypeError, IndexError):
                     tmp[i] = out[i]
             out = tmp
         return out
@@ -713,8 +713,8 @@ class HelmTable(object):
     def _invert_helper(self, temp, dens, abar, zbar, var, var_name, der_name):
         data = self.eos_DT(dens, temp, abar, zbar)
         ivar = 1.0 / var
-        out = float(data[var_name]) * ivar - 1
-        der = float(data.get(der_name, np.nan)) * ivar
+        out = np.squeeze(data[var_name]) * ivar - 1
+        der = np.squeeze(data.get(der_name, np.nan)) * ivar
         return out, der
 
     def _adaptive_root_find(self, x0=None, args=None, maxiter=100, bracket=None,
