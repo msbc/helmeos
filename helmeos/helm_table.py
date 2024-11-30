@@ -720,12 +720,12 @@ class HelmTable(object):
     def _adaptive_root_find(self, x0=None, args=None, maxiter=100, bracket=None,
                             tol=1e-10, newt_err=0.1):
         func = self._invert_helper
-        # var = args[3]
         if bracket is None:
             bracket = 10 ** np.array([self.temp_log_min, self.temp_log_max])
-
-        if x0 in bracket:
-            raise ValueError
+        bracket = np.atleast_1d(bracket)
+        if bracket[0] >= bracket[1]:
+            raise ValueError("Bracket must be strictly monotonically increasing.")
+        x0 = x0 or np.sqrt(np.prod(bracket))
 
         tmp = func(x0, *args)
         if tmp[0] <= 0:
@@ -778,7 +778,7 @@ class HelmTable(object):
 
     def eos_invert(self, dens, abar, zbar, var, var_name, der_name=None, t0=None):
         t0 = t0 or 10 ** (.5 * (self.temp_log_min + self.temp_log_max))
-        der_name = der_name or _derivatives.get(var_name, "nan")
+        der_name = der_name or _derivatives.get(var_name, "none")
         return self._vec_invert(dens, abar, zbar, var, var_name, der_name, t0)
 
     def full_table(self, abar=1.0, zbar=1.0, overwite=False):
@@ -884,8 +884,8 @@ class _DelayedTable(HelmTable):
         if item in self._kwargs:
             self.load()
             return self.__getattribute__(item)
-        raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__,
-                                                                        item))
+        msg = "'{}' object has no attribute '{}'".format(self.__class__, item)
+        raise AttributeError(msg)
 
 
 # quintic hermite polynomial statement functions
