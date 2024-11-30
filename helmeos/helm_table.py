@@ -1,6 +1,5 @@
 import numpy as np
 import os
-from scipy.optimize import fsolve
 from . import table_param as tab
 from .phys_const import kerg, kergavo, avo, asoli3, sioncon, third, forth, pi, esqu, \
     a1, a2, b1, b2, c1, c2, d1, e1, light2, clight
@@ -110,10 +109,7 @@ class HelmTable(object):
         self._dd3i_sav = self._ddi_sav * self._dd2i_sav
 
         # inversion function
-        self._vec_inv_with_d = np.vectorize(self._scalar_eos_invert_with_d,
-                                            otypes=[np.float64])
-        self._vec_inv_no_d = np.vectorize(self._scalar_eos_invert_no_d,
-                                          otypes=[np.float64])
+        self._vec_invert = np.vectorize(self._scalar_eos_invert, otypes=[np.float64])
 
     def eos_DT(self, den, temp, abar, zbar, outvar=None):
         scalar_input = False
@@ -714,19 +710,16 @@ class HelmTable(object):
             out = tmp
         return out
 
-    def _invert_helper_with_der(self, temp, dens, abar, zbar, var, var_name, der_name):
+    def _invert_helper(self, temp, dens, abar, zbar, var, var_name, der_name):
         data = self.eos_DT(dens, temp, abar, zbar)
         ivar = 1.0 / var
         out = float(data[var_name]) * ivar - 1
-        der = float(data[der_name]) * ivar
+        der = float(data.get(der_name, np.nan)) * ivar
         return out, der
-
-    def _invert_helper_without_der(self, log_t, dens, abar, zbar, var, var_name):
-        return self.eos_DT(dens, 10 ** log_t, abar, zbar)[var_name] / var - 1.0
 
     def _adaptive_root_find(self, x0=None, args=None, maxiter=100, bracket=None,
                             tol=1e-10, newt_err=0.1):
-        func = self._invert_helper_with_der
+        func = self._invert_helper
         # var = args[3]
         if bracket is None:
             bracket = 10 ** np.array([self.temp_log_min, self.temp_log_max])
@@ -750,7 +743,7 @@ class HelmTable(object):
         n = 0
         while np.abs(tmp[0]) > tol:
             # if error is large take secant method step
-            if np.abs(tmp[0]) > newt_err:
+            if np.abs(tmp[0]) > newt_err or not np.all(np.isfinite(tmp[1])):
                 delta = tmp[0] * (x0 - xlast) / (tmp[0] - flast)
                 xlast = x0
                 x0 -= delta
@@ -778,41 +771,15 @@ class HelmTable(object):
                 raise ValueError("Did not converge.")
         return x0
 
-    def _scalar_eos_invert_with_d(self, dens, abar, zbar, var, var_name, der_name, t0,
-                                  t1):
+    def _scalar_eos_invert(self, dens, abar, zbar, var, var_name, der_name, t0):
         out = self._adaptive_root_find(x0=t0,
                                        args=(dens, abar, zbar, var, var_name, der_name))
         return out
 
-    def _scalar_eos_invert_no_d(self, dens, abar, zbar, var, var_name, lt0, lt1):
-        out = fsolve(self._invert_helper_without_der, x0=lt0,
-                     args=(dens, abar, zbar, var, var_name))
-        try:
-            assert out.converged
-        except AssertionError:
-            raise ValueError("Root not converged.")
-        return 10 ** out.root
-
-    def eos_invert(self, dens, abar, zbar, var, var_name, der_name=None, t0=None,
-                   t1=None):
-        if t0 is None:
-            t0 = 10 ** (.5 * (self.temp_log_min + self.temp_log_max))
-        if t1 is None:
-            t1 = 2 * t0
-        if der_name is None:
-            der_name = _derivatives.get(var_name, None)
-        if der_name is None:
-            try:
-                lt0 = np.log10(t0)
-            except AttributeError:
-                lt0 = None
-            try:
-                lt1 = np.log10(t1)
-            except AttributeError:
-                lt1 = None
-            return self._vec_inv_no_d(dens, abar, zbar, var, var_name, lt0, lt1)
-        else:
-            return self._vec_inv_with_d(dens, abar, zbar, var, var_name, der_name, t0, t1)
+    def eos_invert(self, dens, abar, zbar, var, var_name, der_name=None, t0=None):
+        t0 = t0 or 10 ** (.5 * (self.temp_log_min + self.temp_log_max))
+        der_name = der_name or _derivatives.get(var_name, "nan")
+        return self._vec_invert(dens, abar, zbar, var, var_name, der_name, t0)
 
     def full_table(self, abar=1.0, zbar=1.0, overwite=False):
         if overwite:

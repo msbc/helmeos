@@ -7,7 +7,6 @@ dynamic = ["version"]
 readme = "README.md"
 dependencies = [
     "numpy",
-    "scipy",
 ]
 license = {text = "MIT License"}
 keywords = ["equation of state", "helmeos", "eos", "thermodynamics",
