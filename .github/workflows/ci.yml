@@ -10,6 +10,31 @@ on:
       - main
 
 jobs:
+  flake8:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          python-version: "3.11"
+          auto-activate-base: false
+
+      - name: Create and activate environment
+        run: |
+          conda create -n test-env python=3.11 -y tox tox-conda flake8
+
+      - name: Run Flake8
+        run: |
+          conda init
+          source /home/runner/.bashrc
+          conda activate test-env
+          tox -e flake8
+
   test:
     runs-on: ubuntu-latest
 
