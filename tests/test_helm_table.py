@@ -1,6 +1,6 @@
 """Test accuracy of code"""
 import numpy as np
-from helmeos import HelmTable, default
+from helmeos import HelmTable
 from helmeos.helm_table import OldStyleInputs, _translate, _DelayedTable
 import helmeos.table_param as tab
 try:
