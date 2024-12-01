@@ -7,6 +7,17 @@ coverage:
   status:
     project:
       default:
+        threshold: 0%
         target: 100%
+        base: auto
         flags:
           - unittests
+        paths:
+          - "helmeos"
+          - "tests"
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
