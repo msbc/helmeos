@@ -1,0 +1,4 @@
+codecov:
+  branch: main
+  token: ${{ secrets.CODECOV_TOKEN }}
+  strict_yaml_branch: default
