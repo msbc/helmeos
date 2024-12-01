@@ -65,7 +65,7 @@ def test_table_features():
     ht = HelmTable()
     ot = OldStyleInputs()
     dt = _DelayedTable()
-    assert default.fn == ht.fn
+    assert dt.fn == ht.fn
     h_data = ht.full_table(overwite=True)
     o_data = ot.full_table()
     assert h_data.keys() == o_data.keys()
