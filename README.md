@@ -15,7 +15,6 @@ A Python implementation/port of [Frank Timmes' Helmholtz EoS](http://cococubed.c
 Python packages:
 
 - numpy
-- scipy
 - matplotlib (optional, for plotting)
 
 This is only tested on Python3.
