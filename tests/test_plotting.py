@@ -23,7 +23,8 @@ def test_plotting(monkeypatch):
     import matplotlib.pyplot as plt
     default.plot_var('cs')
     plt.close()
-    default.plot_var('cs', log=True)
+    cs = default.full_table()['cs']
+    default.plot_var(cs, log=True)
     plt.close()
     ax = plt.subplot()
     default.plot_var('cs', ax=ax)

@@ -791,9 +791,10 @@ class HelmTable(object):
         return self._full_table
 
     def plot_var(self, var, log=False, abar=1.0, zbar=1.0, fig=None, ax=None, cb=True,
-                 aspect=None, vmin=None, vmax=None, fig_opt=None, dpi=None, figsize=None,
-                 popt=None, cmap=None, cbl=None):
+                 aspect='auto', vmin=None, vmax=None, fig_opt=None, dpi=None, figsize=None,
+                 popt=None, cmap=None, cbl=None, interpolation=None):
         try:
+            import matplotlib as mpl
             import matplotlib.pyplot as plt
             from mpl_toolkits.axes_grid1 import make_axes_locatable
             from matplotlib.colors import LogNorm
@@ -803,7 +804,12 @@ class HelmTable(object):
             msg += '`pip install helmeos[plotting]`'
             raise ImportError(msg)
 
-        ft = self.full_table(abar, zbar)
+        if isinstance(var, str):
+            ft = self.full_table(abar, zbar)
+            data = ft[var]
+            cbl = cbl or var
+        else:
+            data = var
 
         if popt is None:
             popt = dict()
@@ -816,7 +822,8 @@ class HelmTable(object):
                   self.temp_log_min, self.temp_log_max]
 
         _popt = {'norm': norm, 'extent': extent, 'aspect': aspect, 'vmin': vmin,
-                 'vmax': vmax, 'cmap': cmap}
+                 'vmax': vmax, 'cmap': cmap, 'origin': 'lower',
+                 'interpolation': interpolation}
         _popt.update(popt)
 
         if fig is None and ax is None:
@@ -828,15 +835,22 @@ class HelmTable(object):
         if ax is not None:
             plt.sca(ax)
 
-        im = plt.imshow(ft[var].T, **_popt)
+        im = plt.imshow(data.T, **_popt)
         ax = plt.gca()
+
+        ax.set_xlabel('Log$_{10}$ Density (g/cm$^3$)')
+        ax.set_ylabel('Log$_{10}$ Temperature (K)')
+
+        ax.xaxis.set_ticks_position('both')
+        ax.yaxis.set_ticks_position('both')
+        ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
+        ax.yaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
+        ax.tick_params(axis='both', which='both', direction='in')
 
         if cb:
             divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cax = divider.append_axes("right", size=0.2, pad=0.05)
             cb = plt.colorbar(im, cax=cax)
-            if cbl is None:
-                cbl = var
             if cbl:
                 cb.set_label(cbl)
 
