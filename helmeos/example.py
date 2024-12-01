@@ -2,15 +2,7 @@
 
 import numpy as np
 import os
-try:
-    import helmeos
-except ImportError:
-    try:
-        from .. import helmeos
-    except ImportError:
-        import sys
-        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        import helmeos
+import helmeos
 
 vars_to_print = ['etot', 'ptot', 'cs', 'sele']
 
