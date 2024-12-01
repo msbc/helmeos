@@ -1,6 +1,7 @@
 # helmeos
 
 [![codecov](https://codecov.io/github/msbc/helmeos/graph/badge.svg?token=9C1XFJO2SQ)](https://codecov.io/github/msbc/helmeos)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/license/mit)
 
 A Python implementation/port of [Frank Timmes' Helmholtz EoS](http://cococubed.com/code_pages/eos.shtml).
 
