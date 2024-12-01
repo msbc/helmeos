@@ -21,17 +21,22 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: "latest"
-          python-version: "3.11"
+          python-version: 3.11
           auto-activate-base: false
+
 
       - name: Create and activate environment
         run: |
-          conda create -n test-env python=3.11 -y tox tox-conda flake8
+          conda create -n test-env python=3.11 flake8 -y
+          conda init
+          source ~/.bashrc
+          conda activate test-env
+          pip install tox tox-conda
 
       - name: Run Flake8
         run: |
           conda init
-          source /home/runner/.bashrc
+          source ~/.bashrc
           conda activate test-env
           tox -e flake8
 
@@ -57,7 +62,7 @@ jobs:
         run: |
           conda create -n test-env python=${{ matrix.python-version }} -y
           conda init
-          source /home/runner/.bashrc
+          source ~/.bashrc
           conda activate test-env
           pip install tox tox-conda
 
@@ -73,7 +78,7 @@ jobs:
       - name: Run Tox
         run: |
           conda init
-          source /home/runner/.bashrc
+          source ~/.bashrc
           conda activate test-env
           tox -e py$(echo ${{ matrix.python-version }} | tr -d . | cut -c 1-3)
 
