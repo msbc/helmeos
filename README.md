@@ -5,6 +5,8 @@
 
 A Python implementation/port of [Frank Timmes' Helmholtz EoS](http://cococubed.com/code_pages/eos.shtml).
 
+This package provides a simple interface to the Helmholtz EoS for a wide range of temperatures and densities. The Helmholtz EoS is a tabulated equation of state for stellar matter, which is based on the Helmholtz free energy. The Helmholtz free energy is a function of temperature, density, and composition, and is used to calculate the pressure, internal energy, and entropy of a gas. This package does not provide a way to calculate the interpolation tables, but it does provide a way to read the tables and interpolate the values.
+
 ## References
 
 - [Timmes, F. X., & Arnett, D. 1999, ApJS, 125, 277](https://ui.adsabs.harvard.edu/abs/1999ApJS..125..277T/abstract)
