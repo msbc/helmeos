@@ -21,6 +21,14 @@ Python packages:
 
 This is only tested on Python3.
 
+## Installation
+
+This package is available on PyPI, so you can install it using pip:
+```pip install helmeos```
+
+This package is also available on conda-forge, so you can install it using conda:
+```conda install -c conda-forge helmeos```
+
 ## Example
 
 See [example.py](helmeos/example.py) for example code.
